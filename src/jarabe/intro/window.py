@@ -197,7 +197,7 @@ class _IntroBox(Gtk.VBox):
             button_box.set_layout(Gtk.ButtonBoxStyle.END)
         else:
             button_box.set_layout(Gtk.ButtonBoxStyle.EDGE)
-            back_button = Gtk.Button(_('Back'))
+            back_button = Gtk.Button(_('Change name'))
             image = Icon(icon_name='go-left')
             back_button.set_image(image)
             back_button.connect('clicked', self._back_activated_cb)
@@ -211,7 +211,7 @@ class _IntroBox(Gtk.VBox):
             self._next_button.set_label(_('Done'))
             self._next_button.connect('clicked', self._done_activated_cb)
         else:
-            self._next_button.set_label(_('Next'))
+            self._next_button.set_label(_('Change color'))
             self._next_button.connect('clicked', self._next_activated_cb)
 
         self._current_page.activate()
