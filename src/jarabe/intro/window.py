@@ -171,8 +171,7 @@ class _IntroBox(Gtk.VBox):
         client = GConf.Client.get_default()
         default_nick = client.get_string('/desktop/sugar/user/default_nick')
         if default_nick != 'disabled':
-            self._page = self.PAGE_COLOR
-            if default_nick == 'system':
+            if default_nick == 'system' or not default_nick:
                 pwd_entry = pwd.getpwuid(os.getuid())
                 default_nick = (pwd_entry.pw_gecos.split(',')[0] or
                                 pwd_entry.pw_name)
