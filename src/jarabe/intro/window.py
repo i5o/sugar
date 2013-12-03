@@ -197,7 +197,7 @@ class _IntroBox(Gtk.VBox):
             button_box.set_layout(Gtk.ButtonBoxStyle.END)
         else:
             button_box.set_layout(Gtk.ButtonBoxStyle.EDGE)
-            back_button = Gtk.Button(_('Back'))
+            back_button = Gtk.Button(_('Change name'))
             image = Icon(icon_name='go-left')
             back_button.set_image(image)
             back_button.connect('clicked', self._back_activated_cb)
