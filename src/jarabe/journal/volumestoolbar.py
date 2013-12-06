@@ -17,6 +17,7 @@
 import logging
 import os
 import statvfs
+import hashlib
 from gettext import gettext as _
 
 from gi.repository import GObject
@@ -34,6 +35,7 @@ import shutil
 from sugar3.graphics.radiotoolbutton import RadioToolButton
 from sugar3.graphics.palette import Palette
 from sugar3.graphics.xocolor import XoColor
+from sugar3.graphics.xocolort import colors
 from sugar3.graphics import style
 from sugar3 import env
 
@@ -44,6 +46,17 @@ from jarabe.view.palettes import VolumePalette
 
 _JOURNAL_0_METADATA_DIR = '.olpc.store'
 
+def _get_mount_color(mount):
+    sha_hash = hashlib.sha1()
+    data = mount.get_name()
+    sha_hash.update(data)
+    digest = hash(sha_hash.digest())
+    index = digest % len(colors)
+
+    color = XoColor('%s,%s' %
+        (colors[index][0],
+        colors[index][1]))
+    return color
 
 def _get_id(document):
     """Get the ID for the document in the xapian database."""
@@ -323,7 +336,7 @@ class VolumeButton(BaseButton):
                                                    Gtk.IconSize.LARGE_TOOLBAR)
         # TODO: retrieve the colors from the owner of the device
         client = GConf.Client.get_default()
-        color = XoColor(client.get_string('/desktop/sugar/user/color'))
+        color = _get_mount_color(self._mount)
         self.props.xo_color = color
 
     def create_palette(self):

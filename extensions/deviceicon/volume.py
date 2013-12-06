@@ -16,14 +16,15 @@
 
 import logging
 from gettext import gettext as _
+import hashlib
 
 from gi.repository import GLib
 from gi.repository import Gio
 from gi.repository import Gtk
-from gi.repository import GConf
 
 from sugar3.graphics.tray import TrayIcon
 from sugar3.graphics.xocolor import XoColor
+from sugar3.graphics.xocolor import colors
 from sugar3.graphics.palettemenu import PaletteMenuItem
 from sugar3.graphics.icon import Icon
 
@@ -37,6 +38,19 @@ _icons = {}
 volume_monitor = None
 
 
+def _get_mount_color(mount):
+    sha_hash = hashlib.sha1()
+    data = mount.get_name()
+    sha_hash.update(data)
+    digest = hash(sha_hash.digest())
+    index = digest % len(colors)
+
+    color = XoColor('%s,%s' %
+        (colors[index][0],
+        colors[index][1]))
+    return color
+
+
 class DeviceView(TrayIcon):
 
     FRAME_POSITION_RELATIVE = 500
@@ -47,8 +61,7 @@ class DeviceView(TrayIcon):
         self._icon_name = get_mount_icon_name(mount,
                                               Gtk.IconSize.LARGE_TOOLBAR)
         # TODO: retrieve the colors from the owner of the device
-        client = GConf.Client.get_default()
-        color = XoColor(client.get_string('/desktop/sugar/user/color'))
+        color = _get_mount_color(self._mount)
 
         TrayIcon.__init__(self, icon_name=self._icon_name, xo_color=color)
 
@@ -60,8 +73,7 @@ class DeviceView(TrayIcon):
         palette.set_group_id('frame')
 
         menu_item = PaletteMenuItem(_('Show contents'))
-        client = GConf.Client.get_default()
-        color = XoColor(client.get_string('/desktop/sugar/user/color'))
+        color = _get_mount_color(self._mount)
         icon = Icon(icon_name=self._icon_name, icon_size=Gtk.IconSize.MENU,
                     xo_color=color)
         menu_item.set_image(icon)
