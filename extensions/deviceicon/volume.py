@@ -40,7 +40,7 @@ volume_monitor = None
 
 def _get_mount_color(mount):
     sha_hash = hashlib.sha1()
-    data = mount.get_name()
+    data = mount.get_root().get_path()
     sha_hash.update(data)
     digest = hash(sha_hash.digest())
     index = digest % len(colors)
