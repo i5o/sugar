@@ -12,6 +12,7 @@ Makefile.in
 *.loT
 .*.sw?
 *.service
+*.nja
 stamp-*
 
 # Absolute
