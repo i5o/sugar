@@ -41,6 +41,8 @@ from sugar3.bundle.activitybundle import ActivityBundle
 from sugar3.datastore import datastore
 from sugar3.env import get_user_activities_path
 from sugar3 import mime
+from sugar3.graphics.alert import ConfirmationAlert
+from sugar3.graphics.alert import NotifyAlert
 
 from jarabe.view import customizebundle
 
@@ -169,19 +171,21 @@ class ViewSource(Gtk.Window):
         self.connect('destroy', self.__destroy_cb, document_path)
         self.connect('key-press-event', self.__key_press_event_cb)
 
-        vbox = Gtk.VBox()
-        self.add(vbox)
-        vbox.show()
+        self.vbox = Gtk.VBox()
+        self.add(self.vbox)
+        self.vbox.show()
 
         toolbar = Toolbar(title, bundle_path, document_path,
                           sugar_toolkit_path)
-        vbox.pack_start(toolbar, False, True, 0)
+        toolbar.connect('add-alert', self.add_alert)
+        toolbar.connect('remove-alert', self.remove_alert)
+        self.vbox.pack_start(toolbar, False, True, 0)
         toolbar.connect('stop-clicked', self.__stop_clicked_cb)
         toolbar.connect('source-selected', self.__source_selected_cb)
         toolbar.show()
 
         pane = Gtk.HPaned()
-        vbox.pack_start(pane, True, True, 0)
+        self.vbox.pack_start(pane, True, True, 0)
         pane.show()
 
         self._selected_bundle_file = None
@@ -252,6 +256,13 @@ class ViewSource(Gtk.Window):
         metrics = pango_font.get_metrics()
         return Pango.PIXELS(metrics.get_approximate_char_width()) * char_count
 
+    def add_alert(self, data, alert):
+        self.vbox.pack_start(alert, False, False, 0)
+        self.vbox.reorder_child(alert, 1)
+
+    def remove_alert(self, data, alert):
+        self.vbox.remove(alert)
+
     def __realize_cb(self, widget):
         self.set_type_hint(Gdk.WindowTypeHint.DIALOG)
         window = self.get_window()
@@ -317,6 +328,13 @@ class ViewSource(Gtk.Window):
 class DocumentButton(RadioToolButton):
     __gtype_name__ = 'SugarDocumentButton'
 
+    __gsignals__ = {
+        'add-alert': (GObject.SignalFlags.RUN_FIRST, None,
+                ([object])),
+        'remove-alert': (GObject.SignalFlags.RUN_FIRST, None,
+                ([object])),
+    }
+
     def __init__(self, file_name, document_path, title, bundle=False):
         RadioToolButton.__init__(self)
 
@@ -339,7 +357,7 @@ class DocumentButton(RadioToolButton):
             icon = Icon(icon_name='edit-duplicate',
                         icon_size=Gtk.IconSize.MENU,
                         xo_color=XoColor(self._color))
-            menu_item.connect('activate', self.__copy_to_home_cb)
+            menu_item.connect('activate', self.__show_duplicate_alert)
         else:
             menu_item = MenuItem(_('Keep'))
             icon = Icon(icon_name='document-save',
@@ -352,7 +370,40 @@ class DocumentButton(RadioToolButton):
         self.props.palette.menu.append(menu_item)
         menu_item.show()
 
-    def __copy_to_home_cb(self, menu_item):
+    def __alert_response_cb(self, alert, response_id):
+        if response_id == Gtk.ResponseType.OK:
+            self.__copy_to_home_cb()
+            self.emit('remove-alert', alert)
+
+            alert = NotifyAlert(10)
+            alert.props.title = _('Duplicated')
+            alert.props.msg = _('The activity has been duplicated')
+
+            def remove_alert(alert, response_id):
+                self.emit('remove-alert', alert)
+
+            alert.connect('response', remove_alert)
+            self.emit('add-alert', alert)
+
+        else:
+            watch = Gdk.Cursor(Gdk.CursorType.LEFT_PTR)
+            gdk_window = self.get_root_window()
+            gdk_window.set_cursor(watch)
+            self.emit('remove-alert', alert)
+
+    def __show_duplicate_alert(self, menu_item):
+        watch = Gdk.Cursor(Gdk.CursorType.WATCH)
+        gdk_window = self.get_root_window()
+        gdk_window.set_cursor(watch)
+
+        alert = ConfirmationAlert()
+        alert.props.title = _('Duplicate activity')
+        alert.props.msg = _('This process may take a while')
+        alert.connect('response', self.__alert_response_cb)
+
+        self.emit('add-alert', alert)
+
+    def __copy_to_home_cb(self):
         """Make a local copy of the activity bundle in user_activities_path"""
         user_activities_path = get_user_activities_path()
         nick = customizebundle.generate_unique_id()
@@ -363,9 +414,14 @@ class DocumentButton(RadioToolButton):
             shutil.copytree(self._document_path,
                             os.path.join(user_activities_path, new_basename),
                             symlinks=True)
+
             customizebundle.generate_bundle(nick, new_basename)
         else:
             _logger.debug('%s already exists', new_basename)
+
+        watch = Gdk.Cursor(Gdk.CursorType.LEFT_PTR)
+        gdk_window = self.get_root_window()
+        gdk_window.set_cursor(watch)
 
     def __keep_in_journal_cb(self, menu_item):
         mime_type = mime.get_from_file_name(self._document_path)
@@ -402,6 +458,10 @@ class Toolbar(Gtk.Toolbar):
         'stop-clicked': (GObject.SignalFlags.RUN_FIRST, None, ([])),
         'source-selected': (GObject.SignalFlags.RUN_FIRST, None,
                             ([str])),
+        'add-alert': (GObject.SignalFlags.RUN_FIRST, None,
+                ([object])),
+        'remove-alert': (GObject.SignalFlags.RUN_FIRST, None,
+                            ([object])),
     }
 
     def __init__(self, title, bundle_path, document_path, sugar_toolkit_path):
@@ -420,6 +480,13 @@ class Toolbar(Gtk.Toolbar):
             document_button = DocumentButton(file_name, document_path, title)
             document_button.connect('toggled', self.__button_toggled_cb,
                                     document_path)
+
+            document_button.connect('add-alert',
+                lambda x, y: self.emit('add-alert', y))
+
+            document_button.connect('remove-alert',
+                lambda x, y: self.emit('remove-alert', y))
+
             self.insert(document_button, -1)
             document_button.show()
             self._add_separator()
@@ -427,6 +494,12 @@ class Toolbar(Gtk.Toolbar):
         if bundle_path is not None and os.path.exists(bundle_path):
             activity_button = DocumentButton(file_name, bundle_path, title,
                                              bundle=True)
+            activity_button.connect('add-alert',
+                lambda x, y: self.emit('add-alert', y))
+
+            activity_button.connect('remove-alert',
+                lambda x, y: self.emit('remove-alert', y))
+
             icon = Icon(file=file_name,
                         icon_size=Gtk.IconSize.LARGE_TOOLBAR,
                         fill_color=style.COLOR_TRANSPARENT.get_svg(),
