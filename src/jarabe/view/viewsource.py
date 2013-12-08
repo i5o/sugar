@@ -308,6 +308,9 @@ class ViewSource(Gtk.Window):
         del map_activity_to_window[self._parent_window_xid]
         if document_path is not None and os.path.exists(document_path):
             os.unlink(document_path)
+        watch = Gdk.Cursor(Gdk.CursorType.LEFT_PTR)
+        gdk_window = self.get_root_window()
+        gdk_window.set_cursor(watch)
 
     def __key_press_event_cb(self, window, event):
         keyname = Gdk.keyval_name(event.keyval)
@@ -377,7 +380,7 @@ class DocumentButton(RadioToolButton):
 
             alert = NotifyAlert(10)
             alert.props.title = _('Duplicated')
-            alert.props.msg = _('The activity has been duplicated')
+            alert.props.msg = _('The activity has been duplicated.')
 
             def remove_alert(alert, response_id):
                 self.emit('remove-alert', alert)
@@ -398,7 +401,7 @@ class DocumentButton(RadioToolButton):
 
         alert = ConfirmationAlert()
         alert.props.title = _('Duplicate activity')
-        alert.props.msg = _('This process may take a while')
+        alert.props.msg = _('This process may take a while.')
         alert.connect('response', self.__alert_response_cb)
 
         self.emit('add-alert', alert)
