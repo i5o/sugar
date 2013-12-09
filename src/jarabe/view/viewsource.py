@@ -1,6 +1,7 @@
 # Copyright (C) 2008 One Laptop Per Child
 # Copyright (C) 2009 Tomeu Vizoso, Simon Schampijer
 # Copyright (C) 2011 Walter Bender
+# Copyright (C) 2013 Ignacio Rodriguez
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -375,19 +376,8 @@ class DocumentButton(RadioToolButton):
 
     def __alert_response_cb(self, alert, response_id):
         if response_id == Gtk.ResponseType.OK:
-            self.__copy_to_home_cb()
             self.emit('remove-alert', alert)
-
-            alert = NotifyAlert(10)
-            alert.props.title = _('Duplicated')
-            alert.props.msg = _('The activity has been duplicated.')
-
-            def remove_alert(alert, response_id):
-                self.emit('remove-alert', alert)
-
-            alert.connect('response', remove_alert)
-            self.emit('add-alert', alert)
-
+            GObject.idle_add(self.__copy_to_home_cb)
         else:
             watch = Gdk.Cursor(Gdk.CursorType.LEFT_PTR)
             gdk_window = self.get_root_window()
@@ -406,6 +396,24 @@ class DocumentButton(RadioToolButton):
 
         self.emit('add-alert', alert)
 
+    def __show_duplicated_alert(self, exists):
+        alert = NotifyAlert(10)
+        if exists:
+            title = _('Already exists')
+            msg = _('There is already a duplicate of this activity.')
+        else:
+            title = _('Duplicated')
+            msg = _('The activity has been duplicated.')
+
+        alert.props.title = title
+        alert.props.msg = msg
+
+        def remove_alert(alert, response_id):
+            self.emit('remove-alert', alert)
+
+        alert.connect('response', remove_alert)
+        self.emit('add-alert', alert)
+
     def __copy_to_home_cb(self):
         """Make a local copy of the activity bundle in user_activities_path"""
         user_activities_path = get_user_activities_path()
@@ -414,17 +422,20 @@ class DocumentButton(RadioToolButton):
             nick, os.path.basename(self._document_path))
         if not os.path.exists(os.path.join(user_activities_path,
                                            new_basename)):
+            exists = False
             shutil.copytree(self._document_path,
                             os.path.join(user_activities_path, new_basename),
                             symlinks=True)
-
             customizebundle.generate_bundle(nick, new_basename)
         else:
+            exists = True
             _logger.debug('%s already exists', new_basename)
 
         watch = Gdk.Cursor(Gdk.CursorType.LEFT_PTR)
         gdk_window = self.get_root_window()
         gdk_window.set_cursor(watch)
+
+        self.__show_duplicated_alert(exists)
 
     def __keep_in_journal_cb(self, menu_item):
         mime_type = mime.get_from_file_name(self._document_path)
