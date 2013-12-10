@@ -426,7 +426,10 @@ class DocumentButton(RadioToolButton):
             shutil.copytree(self._document_path,
                             os.path.join(user_activities_path, new_basename),
                             symlinks=True)
-            customizebundle.generate_bundle(nick, new_basename)
+            try:
+                customizebundle.generate_bundle(nick, new_basename)
+            except:
+                pass
         else:
             exists = True
             _logger.debug('%s already exists', new_basename)
