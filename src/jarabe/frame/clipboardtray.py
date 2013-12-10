@@ -110,7 +110,7 @@ class ClipboardTray(tray.VTray):
             group = None
 
         icon = ClipboardIcon(cb_object, group)
-        self.add_item(icon)
+        self.add_item(icon, 0)
         icon.show()
         self._icons[cb_object.get_id()] = icon
 
