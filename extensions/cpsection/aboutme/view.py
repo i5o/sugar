@@ -1,5 +1,6 @@
 # Copyright (C) 2008, OLPC
 # Copyright (C) 2010, Sugar Labs
+# Copyright (C) 2013, Ignacio Rodriguez
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,6 +17,7 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
 
 from gi.repository import Gtk
+from gi.repository import Gdk
 from gi.repository import GObject
 from gettext import gettext as _
 
@@ -154,9 +156,13 @@ class AboutMe(SectionView):
         self._nick_sid = 0
         self._color_valid = True
         self._nick_valid = True
-
+        
+        self.first_x_size = Gdk.Screen.width()
+        self.first_y_size = Gdk.Screen.height()
+        
         self.set_border_width(style.DEFAULT_SPACING * 2)
         self.set_spacing(style.DEFAULT_SPACING)
+
         self._group = Gtk.SizeGroup(Gtk.SizeGroupMode.HORIZONTAL)
 
         self._color_label = Gtk.HBox(spacing=style.DEFAULT_SPACING)
@@ -183,6 +189,29 @@ class AboutMe(SectionView):
         self._setup_nick()
         self.setup()
 
+        if self.first_y_size > self.first_x_size:
+            self.set_border_width(0)
+            self.set_spacing(0)
+            self._color_box.set_spacing(0)
+
+            x = self.first_y_size
+            self.first_x_size = self.first_y_size
+            self.first_y_size = x
+
+        Gdk.Screen.get_default().connect(
+            'size-changed', self.__size_changed_cb)
+
+    def __size_changed_cb(self, event):
+        x = Gdk.Screen.width()
+        if x < self.first_x_size or x > self.first_x_size: 
+            self.set_border_width(0)
+            self.set_spacing(0)
+            self._color_box.set_spacing(0)         
+        else:
+            self.set_border_width(style.DEFAULT_SPACING * 2)
+            self.set_spacing(style.DEFAULT_SPACING)
+            self._color_box.set_spacing(style.DEFAULT_SPACING)
+        
     def _setup_nick(self):
         self._nick_entry = Gtk.Entry()
         self._nick_entry.set_width_chars(25)
