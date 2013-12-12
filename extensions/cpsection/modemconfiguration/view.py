@@ -81,7 +81,7 @@ class ModemConfiguration(SectionView):
         self._combo_grp = Gtk.SizeGroup(Gtk.SizeGroupMode.HORIZONTAL)
 
         scrolled_win = Gtk.ScrolledWindow()
-        scrolled_win.set_policy(Gtk.PolicyType.AUTOMATIC,
+        scrolled_win.set_policy(Gtk.PolicyType.NEVER,
                                 Gtk.PolicyType.AUTOMATIC)
         self.add(scrolled_win)
         scrolled_win.show()
