@@ -157,13 +157,17 @@ class AboutMe(SectionView):
         self._color_valid = True
         self._nick_valid = True
         
-        self.first_x_size = Gdk.Screen.width()
-        self.first_y_size = Gdk.Screen.height()
-        
         self.set_border_width(style.DEFAULT_SPACING * 2)
         self.set_spacing(style.DEFAULT_SPACING)
 
         self._group = Gtk.SizeGroup(Gtk.SizeGroupMode.HORIZONTAL)
+        self._main_box = Gtk.VBox(spacing=style.DEFAULT_SPACING)
+
+        self._main_scroll = Gtk.ScrolledWindow()
+        self._main_scroll.set_policy(Gtk.PolicyType.AUTOMATIC, 
+            Gtk.PolicyType.AUTOMATIC)
+        self._main_scroll.add_with_viewport(self._main_box)
+        self.pack_start(self._main_scroll, True, True, 0)
 
         self._color_label = Gtk.HBox(spacing=style.DEFAULT_SPACING)
         self._color_box = Gtk.HBox(spacing=style.DEFAULT_SPACING)
@@ -189,28 +193,9 @@ class AboutMe(SectionView):
         self._setup_nick()
         self.setup()
 
-        if self.first_y_size > self.first_x_size:
-            self.set_border_width(0)
-            self.set_spacing(0)
-            self._color_box.set_spacing(0)
-
-            x = self.first_y_size
-            self.first_x_size = self.first_y_size
-            self.first_y_size = x
-
-        Gdk.Screen.get_default().connect(
-            'size-changed', self.__size_changed_cb)
-
-    def __size_changed_cb(self, event):
-        x = Gdk.Screen.width()
-        if x < self.first_x_size or x > self.first_x_size: 
-            self.set_border_width(0)
-            self.set_spacing(0)
-            self._color_box.set_spacing(0)         
-        else:
-            self.set_border_width(style.DEFAULT_SPACING * 2)
-            self.set_spacing(style.DEFAULT_SPACING)
-            self._color_box.set_spacing(style.DEFAULT_SPACING)
+        self._main_scroll.show_all()
+        self._nick_alert.hide()
+        self._color_alert.hide()
         
     def _setup_nick(self):
         self._nick_entry = Gtk.Entry()
@@ -231,8 +216,8 @@ class AboutMe(SectionView):
 
         self._center_in_panel = Gtk.Alignment.new(0.5, 0, 0, 0)
         self._center_in_panel.add(self._nick_box)
-        self.pack_start(self._center_in_panel, False, False, 0)
-        self.pack_start(self._nick_alert_box, False, False, 0)
+        self._main_box.pack_start(self._center_in_panel, False, False, 0)
+        self._main_box.pack_start(self._nick_alert_box, False, False, 0)
         self._nick_box.show()
         self._nick_alert_box.show()
         self._center_in_panel.show()
@@ -273,9 +258,9 @@ class AboutMe(SectionView):
 
         self._center_in_panel = Gtk.Alignment.new(0.5, 0, 0, 0)
         self._center_in_panel.add(self._color_box)
-        self.pack_start(self._color_label, False, False, 0)
-        self.pack_start(self._center_in_panel, False, False, 0)
-        self.pack_start(self._color_alert_box, False, False, 0)
+        self._main_box.pack_start(self._color_label, False, False, 0)
+        self._main_box.pack_start(self._center_in_panel, False, False, 0)
+        self._main_box.pack_start(self._color_alert_box, False, False, 0)
         self._color_label.show()
         self._color_box.show()
         self._color_alert_box.show()
