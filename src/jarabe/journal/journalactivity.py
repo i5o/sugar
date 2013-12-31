@@ -1,5 +1,6 @@
 # Copyright (C) 2006, Red Hat, Inc.
 # Copyright (C) 2007, One Laptop Per Child
+# Copyright (C) 2014, Ignacio Rodriguez
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -215,6 +216,8 @@ class JournalActivity(JournalWindow):
                                 self.__title_edit_finished_cb)
         self._list_view.connect('selection-changed',
                                 self.__selection_changed_cb)
+        self._list_view.connect('use-favorites',
+                                self._main_toolbox.set_use_options)
         self._main_view.pack_start(self._list_view, True, True, 0)
         self._list_view.show()
 
@@ -429,6 +432,8 @@ class JournalActivity(JournalWindow):
     def unfreeze_ui(self):
         self._set_widgets_sensitive_state(True)
 
+    def get_volumes_toolbar(self):
+        return self._volumes_toolbar
 
 def get_journal():
     global _journal

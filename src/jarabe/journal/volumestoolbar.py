@@ -1,4 +1,5 @@
 # Copyright (C) 2007, 2011, One Laptop Per Child
+# Copyright (C) 2014, Ignacio Rodriguez
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -38,7 +39,9 @@ from sugar3 import profile
 
 from jarabe.journal import model
 from jarabe.journal.misc import get_mount_icon_name
+from jarabe.journal.listmodel import ListModel
 from jarabe.view.palettes import VolumePalette
+from jarabe.webservice import accountsmanager
 
 
 _JOURNAL_0_METADATA_DIR = '.olpc.store'
@@ -171,6 +174,7 @@ class VolumesToolbar(Gtk.Toolbar):
                          ([str, str])),
     }
 
+
     def __init__(self):
         Gtk.Toolbar.__init__(self)
         self._mount_added_hid = None
@@ -203,6 +207,8 @@ class VolumesToolbar(Gtk.Toolbar):
 
         for mount in volume_monitor.get_mounts():
             self._add_button(mount)
+
+        self._add_extensions_buttons()
 
     def _set_up_documents_button(self):
         documents_path = model.get_documents_path()
@@ -250,7 +256,10 @@ class VolumesToolbar(Gtk.Toolbar):
         self.emit('volume-error', strerror, severity)
 
     def _button_toggled_cb(self, button):
-        if button.props.active:
+        if isinstance(button, ExtensionButton) and button.props.active:
+            button.load_files()
+
+        if button.props.active and not isinstance(button, ExtensionButton):
             self.emit('volume-changed', button.mount_point)
 
     def _get_button_for_mount(self, mount):
@@ -274,6 +283,27 @@ class VolumesToolbar(Gtk.Toolbar):
         button = self._get_button_for_mount(mount)
         button.props.active = True
 
+    def _add_extensions_buttons(self):
+        for account in accountsmanager.get_configured_accounts():
+            if hasattr(account, 'add_journal_button'):
+                account.add_journal_button()
+
+
+    def add_extension_button(self, button, extension_name, palette=None):
+        button.props.group = self._volume_buttons[0]
+        if not palette:
+            label = GLib.markup_escape_text(extension_name)
+            button.set_palette(Palette(label))
+        else:
+            button.set_palette(palette)
+        button.connect('toggled', self._button_toggled_cb)
+        button.show()
+
+        position = self.get_item_index(self._volume_buttons[-1]) + 1
+        self.insert(button, position)
+        self._volume_buttons.append(button)
+        self.show()
+
 
 class BaseButton(RadioToolButton):
     __gsignals__ = {
@@ -295,6 +325,7 @@ class BaseButton(RadioToolButton):
                                selection_data, info, timestamp):
         object_id = selection_data.get_data()
         metadata = model.get(object_id)
+        logging.debug(metadata)
         file_path = model.get_file(metadata['uid'])
         if not file_path or not os.path.exists(file_path):
             logging.warn('Entries without a file cannot be copied.')
@@ -302,6 +333,8 @@ class BaseButton(RadioToolButton):
                       _('Entries without a file cannot be copied.'),
                       _('Warning'))
             return
+
+        self.set_active(True)
 
         try:
             model.copy(metadata, self.mount_point)
@@ -382,3 +415,47 @@ class DocumentsButton(BaseButton):
 
         self.props.icon_name = 'user-documents'
         self.props.xo_color = profile.get_color()
+
+
+class ExtensionButton(RadioToolButton):
+
+    __gsignals__ = {
+        'load-files': (GObject.SignalFlags.RUN_FIRST, None,
+                            ([])),
+        'data-upload': (GObject.SignalFlags.RUN_FIRST, None,
+                            ([object])),
+    }
+
+    def __init__(self, icon_name, icons_path=None):
+        RadioToolButton.__init__(self)
+
+        self.ensure_icons(icons_path)
+
+        self.props.icon_name = icon_name
+        self.props.xo_color = profile.get_color()
+
+        self.drag_dest_set(Gtk.DestDefaults.ALL,
+                           [Gtk.TargetEntry.new('journal-object-id', 0, 0)],
+                           Gdk.DragAction.COPY)
+        self.connect('drag-data-received', self._drag_data_received_cb)
+
+    def _drag_data_received_cb(self, widget, drag_context, x, y,
+                               selection_data, info, timestamp):
+        object_id = selection_data.get_data()
+        metadata = model.get(object_id)
+        file_path = model.get_file(metadata['uid'])
+        if not file_path or not os.path.exists(file_path):
+            logging.warn('Entries without a file cannot be copied.')
+            return
+
+        self.emit('data-upload', metadata)
+
+    def ensure_icons(self, icons_path):
+        if not icons_path:
+            return
+
+        theme = Gtk.IconTheme.get_default()
+        theme.append_search_path(icons_path)
+
+    def load_files(self):
+        self.emit('load-files')

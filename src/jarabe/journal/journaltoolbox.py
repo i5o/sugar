@@ -1,5 +1,6 @@
 # Copyright (C) 2007, One Laptop Per Child
 # Copyright (C) 2009, Walter Bender
+# Copyright (C) 2014, Ignacio Rodriguez
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -126,6 +127,13 @@ class MainToolbox(ToolbarBox):
         self._query = self._build_query()
 
         self.refresh_filters()
+
+    def set_use_options(self, widget=None, use=True):
+        self._favorite_button.set_sensitive(use)
+        self._what_search_combo.set_sensitive(use)
+        self._when_search_combo.set_sensitive(use)
+        self._sorting_button.set_sensitive(use)
+        self.search_entry.set_sensitive(use)
 
     def _get_when_search_combo(self):
         when_search = ComboBox()

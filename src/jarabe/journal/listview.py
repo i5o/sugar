@@ -1,4 +1,5 @@
 # Copyright (C) 2009, Tomeu Vizoso
+# Copyright (C) 2014, Ignacio Rodriguez
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -71,10 +72,16 @@ class BaseListView(Gtk.Bin):
         'selection-changed': (GObject.SignalFlags.RUN_FIRST, None, ([int])),
     }
 
-    def __init__(self, journalactivity, enable_multi_operations=False):
+    def __init__(self, journalactivity, enable_multi_operations=False,
+            enable_favorites=True, enable_buddies=True, enable_dates=True,
+            edit_name=True):
         self._query = {}
         self._journalactivity = journalactivity
         self._enable_multi_operations = enable_multi_operations
+        self._enable_favorites = enable_favorites
+        self._enable_buddies = enable_buddies
+        self._enable_dates = enable_dates
+        self._edit_name = edit_name
         self._model = None
         self._progress_bar = None
         self._last_progress_bar_pulse = None
@@ -148,19 +155,22 @@ class BaseListView(Gtk.Bin):
             return object_id.startswith(self._query['mountpoints'][0])
 
     def _add_columns(self):
-        if self._enable_multi_operations:
-            cell_select = Gtk.CellRendererToggle()
-            cell_select.connect('toggled', self.__cell_select_toggled_cb)
-            cell_select.props.activatable = True
-            cell_select.props.xpad = style.DEFAULT_PADDING
-            cell_select.props.indicator_size = style.zoom(26)
+        for column in self.tree_view.get_columns():
+            self.tree_view.remove_column(column)
 
-            column = Gtk.TreeViewColumn()
-            column.props.sizing = Gtk.TreeViewColumnSizing.FIXED
-            column.props.fixed_width = style.GRID_CELL_SIZE
-            column.pack_start(cell_select, True)
-            column.set_cell_data_func(cell_select, self.__select_set_data_cb)
-            self.tree_view.append_column(column)
+        cell_select = Gtk.CellRendererToggle()
+        cell_select.connect('toggled', self.__cell_select_toggled_cb)
+        cell_select.props.activatable = True
+        cell_select.props.xpad = style.DEFAULT_PADDING
+        cell_select.props.indicator_size = style.zoom(26)
+
+        column = Gtk.TreeViewColumn()
+        column.props.sizing = Gtk.TreeViewColumnSizing.FIXED
+        column.props.fixed_width = style.GRID_CELL_SIZE
+        column.set_visible(self._enable_multi_operations)
+        column.pack_start(cell_select, True)
+        column.set_cell_data_func(cell_select, self.__select_set_data_cb)
+        self.tree_view.append_column(column)
 
         cell_favorite = CellRendererFavorite(self.tree_view)
         cell_favorite.connect('clicked', self.__favorite_clicked_cb)
@@ -170,6 +180,7 @@ class BaseListView(Gtk.Bin):
         column.props.fixed_width = cell_favorite.props.width
         column.pack_start(cell_favorite, True)
         column.set_cell_data_func(cell_favorite, self.__favorite_set_data_cb)
+        column.set_visible(self._enable_favorites)
         self.tree_view.append_column(column)
 
         self.cell_icon = CellRendererActivityIcon(self._journalactivity,
@@ -192,7 +203,8 @@ class BaseListView(Gtk.Bin):
         self._title_column = Gtk.TreeViewColumn()
         self._title_column.props.sizing = Gtk.TreeViewColumnSizing.FIXED
         self._title_column.props.expand = True
-        self._title_column.props.clickable = True
+        if not self._edit_name:
+            self._title_column.props.clickable = True
         self._title_column.pack_start(self.cell_title, True)
         self._title_column.add_attribute(self.cell_title, 'markup',
                                          ListModel.COLUMN_TITLE)
@@ -201,7 +213,6 @@ class BaseListView(Gtk.Bin):
         for column_index in [ListModel.COLUMN_BUDDY_1,
                              ListModel.COLUMN_BUDDY_2,
                              ListModel.COLUMN_BUDDY_3]:
-
             buddies_column = Gtk.TreeViewColumn()
             buddies_column.props.sizing = Gtk.TreeViewColumnSizing.FIXED
             self.tree_view.append_column(buddies_column)
@@ -213,6 +224,7 @@ class BaseListView(Gtk.Bin):
             buddies_column.add_attribute(cell_icon, 'buddy', column_index)
             buddies_column.set_cell_data_func(cell_icon,
                                               self.__buddies_set_data_cb)
+            buddies_column.set_visible(self._enable_buddies)
 
         cell_progress = Gtk.CellRendererProgress()
         cell_progress.props.ypad = style.GRID_CELL_SIZE / 4
@@ -240,6 +252,7 @@ class BaseListView(Gtk.Bin):
         self.sort_column.pack_start(cell_text, True)
         self.sort_column.add_attribute(cell_text, 'text',
                                        ListModel.COLUMN_TIMESTAMP)
+        self.sort_column.set_visible(self._enable_dates)
         self.tree_view.append_column(self.sort_column)
 
     def _get_width_for_string(self, text):
@@ -267,6 +280,9 @@ class BaseListView(Gtk.Bin):
 
     def __buddies_set_data_cb(self, column, cell, tree_model,
                               tree_iter, data):
+        if not hasattr(tree_model, 'do_get_value'):
+            cell.props.visible = False
+            return
         buddy = tree_model.do_get_value(tree_iter, cell._model_column_index)
         if buddy is None:
             cell.props.visible = False
@@ -440,8 +456,11 @@ class BaseListView(Gtk.Bin):
         self.add(self._scrolled_window)
         self._progress_bar = None
 
-    def _show_message(self, message, show_clear_query=False):
+    def _show_message(self, message, icon_name=None, show_clear_query=False):
         self.remove(self.get_child())
+
+        if not icon_name:
+            icon_name = 'activity-journal'
 
         background_box = Gtk.EventBox()
         background_box.modify_bg(Gtk.StateType.NORMAL,
@@ -455,7 +474,7 @@ class BaseListView(Gtk.Bin):
         alignment.add(box)
 
         icon = Icon(pixel_size=style.LARGE_ICON_SIZE,
-                    icon_name='activity-journal',
+                    icon_name=icon_name,
                     stroke_color=style.COLOR_BUTTON_GREY.get_svg(),
                     fill_color=style.COLOR_TRANSPARENT.get_svg())
         box.pack_start(icon, expand=True, fill=False, padding=0)
@@ -580,6 +599,8 @@ class ListView(BaseListView):
                                ([])),
         'title-edit-finished': (GObject.SignalFlags.RUN_FIRST, None,
                                 ([])),
+        'use-favorites': (GObject.SignalFlags.RUN_FIRST, None,
+                            ([bool])),
     }
 
     def __init__(self, journalactivity, enable_multi_operations=False):
@@ -597,6 +618,9 @@ class ListView(BaseListView):
         self.cell_icon.connect('detail-clicked', self.__detail_clicked_cb)
         self.cell_icon.connect('volume-error', self.__volume_error_cb)
 
+        self.add_columns()
+
+    def add_columns(self, use=True):
         cell_detail = CellRendererDetail(self.tree_view)
         cell_detail.connect('clicked', self.__detail_cell_clicked_cb)
 
@@ -604,7 +628,18 @@ class ListView(BaseListView):
         column.props.sizing = Gtk.TreeViewColumnSizing.FIXED
         column.props.fixed_width = cell_detail.props.width
         column.pack_start(cell_detail, True)
+        column.set_visible(use)
         self.tree_view.append_column(column)
+
+    def use_options(self, options=True):
+        self._enable_multi_operations = options
+        self._enable_favorites = options
+        self._enable_dates = options
+        self._enable_buddies = options
+        self._edit_name = options
+        self._add_columns()
+        self.add_columns(options)
+        self.emit('use-favorites', options)
 
     def is_dragging(self):
         return self._is_dragging
@@ -729,6 +764,9 @@ class CellRendererActivityIcon(CellRendererIcon):
             return None
 
         tree_model = self.tree_view.get_model()
+        if not hasattr(tree_model, 'get_metadata'):
+            return None
+
         metadata = tree_model.get_metadata(self.props.palette_invoker.path)
 
         palette = ObjectPalette(self._journalactivity, metadata, detail=True)
@@ -774,6 +812,8 @@ class CellRendererBuddy(CellRendererIcon):
 
         # if row[self._model_column_index] is not None:
         #     nick, xo_color = row[self._model_column_index]
+        if not hasattr(row.model, 'do_get_value'):
+            return None
         if row.model.do_get_value(row.iter, self._model_column_index) \
                 is not None:
             nick, xo_color = row.model.do_get_value(
@@ -783,7 +823,7 @@ class CellRendererBuddy(CellRendererIcon):
             return None
 
     def set_buddy(self, buddy):
-        if buddy is None:
+        if buddy is None or not isinstance(buddy, tuple):
             self.props.icon_name = None
         else:
             nick_, xo_color = buddy
