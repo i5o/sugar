@@ -435,6 +435,7 @@ class JournalActivity(JournalWindow):
     def get_volumes_toolbar(self):
         return self._volumes_toolbar
 
+
 def get_journal():
     global _journal
     if _journal is None:

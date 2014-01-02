@@ -39,7 +39,6 @@ from sugar3 import profile
 
 from jarabe.journal import model
 from jarabe.journal.misc import get_mount_icon_name
-from jarabe.journal.listmodel import ListModel
 from jarabe.view.palettes import VolumePalette
 from jarabe.webservice import accountsmanager
 
@@ -174,7 +173,6 @@ class VolumesToolbar(Gtk.Toolbar):
                          ([str, str])),
     }
 
-
     def __init__(self, journal):
         Gtk.Toolbar.__init__(self)
         self._mount_added_hid = None
@@ -259,7 +257,6 @@ class VolumesToolbar(Gtk.Toolbar):
     def _button_toggled_cb(self, button):
         list_view = self._journal.get_list_view()
         tree_view = list_view.tree_view
-        model = tree_view.get_model()
         list_view._clear_message()
         tree_view.set_model(None)
 
@@ -295,7 +292,6 @@ class VolumesToolbar(Gtk.Toolbar):
         for account in accountsmanager.get_configured_accounts():
             if hasattr(account, 'add_journal_button'):
                 account.add_journal_button()
-
 
     def add_extension_button(self, button, extension_name, palette=None):
         button.props.group = self._volume_buttons[0]
