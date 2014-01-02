@@ -260,14 +260,15 @@ class VolumesToolbar(Gtk.Toolbar):
         list_view = self._journal.get_list_view()
         tree_view = list_view.tree_view
         model = tree_view.get_model()
-        if not isinstance(model, ListModel):
-            tree_view.set_model(None)
+        list_view._clear_message()
+        tree_view.set_model(None)
 
         if isinstance(button, ExtensionButton) and button.props.active:
             button.load_files()
 
         if button.props.active and not isinstance(button, ExtensionButton):
             self.emit('volume-changed', button.mount_point)
+            list_view.refresh()
 
     def _get_button_for_mount(self, mount):
         mount_point = mount.get_root().get_path()
