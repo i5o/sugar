@@ -221,7 +221,7 @@ class JournalActivity(JournalWindow):
         self._main_view.pack_start(self._list_view, True, True, 0)
         self._list_view.show()
 
-        self._volumes_toolbar = VolumesToolbar()
+        self._volumes_toolbar = VolumesToolbar(self)
         self._volumes_toolbar.connect('volume-changed',
                                       self.__volume_changed_cb)
         self._volumes_toolbar.connect('volume-error', self.volume_error_cb)

@@ -175,11 +175,12 @@ class VolumesToolbar(Gtk.Toolbar):
     }
 
 
-    def __init__(self):
+    def __init__(self, journal):
         Gtk.Toolbar.__init__(self)
         self._mount_added_hid = None
         self._mount_removed_hid = None
 
+        self._journal = journal
         button = JournalButton()
         button.connect('toggled', self._button_toggled_cb)
         self.insert(button, 0)
@@ -256,6 +257,12 @@ class VolumesToolbar(Gtk.Toolbar):
         self.emit('volume-error', strerror, severity)
 
     def _button_toggled_cb(self, button):
+        list_view = self._journal.get_list_view()
+        tree_view = list_view.tree_view
+        model = tree_view.get_model()
+        if not isinstance(model, ListModel):
+            tree_view.set_model(None)
+
         if isinstance(button, ExtensionButton) and button.props.active:
             button.load_files()
 
