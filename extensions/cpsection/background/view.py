@@ -1,5 +1,6 @@
 # Copyright (C) 2012 Agustin Zubiaga <aguz@sugarlabs.org>
 # Copyright (C) 2013 Sugar Labs
+# Copyright (C) 2014 Ignacio Rodriguez <ignacio@sugarlabs.org>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -25,6 +26,9 @@ from gi.repository import GdkPixbuf
 
 from sugar3.graphics import style
 from sugar3.graphics.radiotoolbutton import RadioToolButton
+from sugar3.graphics.toolbarbox import ToolbarBox
+from sugar3.graphics.toolbutton import ToolButton
+
 from jarabe.controlpanel.sectionview import SectionView
 
 from gettext import gettext as _
@@ -57,7 +61,15 @@ class Background(SectionView):
         clear_button.set_label(_('Clear background'))
         clear_button.connect('clicked', self._clear_clicked_cb)
         clear_button.show()
-        self.pack_end(clear_button, False, True, 0)
+
+        help_button = Gtk.Button.new_from_icon_name(
+            "toolbar-help",
+            style.STANDARD_ICON_SIZE)
+        help_button.set_label(_("Help"))
+        help_button.connect('clicked', self._help_cb)
+
+        self.pack_end(clear_button, False, False, 0)
+        self.pack_end(help_button, False, False, 0)
 
         scrolled_window = Gtk.ScrolledWindow()
         scrolled_window.set_shadow_type(Gtk.ShadowType.ETCHED_IN)
@@ -183,3 +195,66 @@ class Background(SectionView):
 
     def undo(self):
         self._model.undo()
+
+    def _help_cb(self, button):
+        dialog = HelpDialog()
+        dialog.show()
+        dialog.run()
+
+
+class HelpDialog(Gtk.Dialog):
+
+    def __init__(self):
+        Gtk.Dialog.__init__(self, flags=Gtk.DialogFlags.DESTROY_WITH_PARENT)
+
+        x, y = (Gdk.Screen.width() / 2, Gdk.Screen.height() / 2)
+        self.set_size_request(x, y)
+
+        toolbox = self.build_toolbar()
+        self.vbox.pack_start(toolbox, False, False, 0)
+
+        self._help_label = Gtk.Label()
+        self._help_label.set_label(_("""<b>How to add a background image to the Home View</b>
+1. Create or download a background image.
+2. Copy the background image to the Documents folder.
+2a. Open the Journal.
+2b. Hover over or right click on the background image.
+2c. From the menu, under 'Copy to', select "Documents".
+3. Return to the Background section in control panel.
+4. Select your background image."""))
+
+        self._help_label.set_use_markup(True)
+        self.vbox.pack_start(self._help_label, True, True, 5)
+
+        self.set_decorated(False)
+        self.set_skip_pager_hint(True)
+        self.set_skip_taskbar_hint(True)
+        self.set_resizable(False)
+        self.set_modal(True)
+
+        self.connect("focus-out-event", self._destroy)
+
+        self.modify_bg(Gtk.StateType.NORMAL, Gdk.color_parse('#FFFFFF'))
+        self.modify_fg(Gtk.StateType.NORMAL, Gdk.color_parse('#000000'))
+        self.show_all()
+
+    def build_toolbar(self):
+        toolbox = ToolbarBox()
+        toolbar = toolbox.toolbar
+
+        close = ToolButton('entry-cancel')
+        close.connect('clicked', self._destroy)
+
+        separator = Gtk.SeparatorToolItem()
+        separator.props.draw = False
+        separator.set_expand(True)
+
+        toolbar.insert(separator, -1)
+        toolbar.insert(close, -1)
+
+        toolbox.set_size_request(-1, 35)
+
+        return toolbox
+
+    def _destroy(self, widget, event=None):
+        self.destroy()
