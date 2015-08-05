@@ -122,7 +122,7 @@ class CommentsView(Gtk.TreeView):
         self.set_model(self._store)
         col = Gtk.TreeViewColumn()
 
-        who_icon = CellRendererCommentIcon(self)
+        who_icon = CellRendererCommentIcon()
         col.pack_start(who_icon, False)
         col.add_attribute(who_icon, 'file-name', self.COMMENT_ICON)
         col.add_attribute(who_icon, 'xo-color', self.COMMENT_ICON_COLOR)
@@ -135,7 +135,7 @@ class CommentsView(Gtk.TreeView):
         col.pack_start(comment_text, True)
         col.add_attribute(comment_text, 'text', self.COMMENT_MESSAGE)
 
-        erase_icon = CellRendererCommentIcon(self)
+        erase_icon = CellRendererCommentIcon()
         erase_icon.connect('clicked', self._erase_comment_cb)
         col.pack_start(erase_icon, False)
         col.add_attribute(erase_icon, 'file-name', self.COMMENT_ERASE_ICON)
@@ -187,8 +187,8 @@ class CommentsView(Gtk.TreeView):
 
 
 class CellRendererCommentIcon(CellRendererIcon):
-    def __init__(self, tree_view):
-        CellRendererIcon.__init__(self, tree_view)
+    def __init__(self):
+        CellRendererIcon.__init__(self)
 
         self.props.width = style.SMALL_ICON_SIZE
         self.props.height = style.SMALL_ICON_SIZE
@@ -325,8 +325,7 @@ class ExpandedEntry(Gtk.EventBox):
 
     def _create_icon(self):
         icon = CanvasIcon(file_name=misc.get_icon_name(self._metadata))
-        icon.connect_after('button-release-event',
-                           self._icon_button_release_event_cb)
+        icon.connect_after('activate', self.__icon_activate_cb)
 
         if misc.is_activity_bundle(self._metadata):
             xo_color = XoColor('%s,%s' % (style.COLOR_BUTTON_GREY.get_svg(),
@@ -538,8 +537,7 @@ class ExpandedEntry(Gtk.EventBox):
             self._metadata['keep'] = '0'
         self._update_entry(needs_update=True)
 
-    def _icon_button_release_event_cb(self, button, event):
-        logging.debug('_icon_button_release_event_cb')
+    def __icon_activate_cb(self, button):
         misc.resume(self._metadata,
                     alert_window=journalwindow.get_journal_window())
         return True

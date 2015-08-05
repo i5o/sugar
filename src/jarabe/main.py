@@ -34,7 +34,21 @@ import shutil
 reload(sys)
 sys.setdefaultencoding('utf-8')
 
+# Disable overlay scrolling before GTK is loaded
+os.environ['GTK_OVERLAY_SCROLLING'] = '0'
+os.environ['LIBOVERLAY_SCROLLBAR'] = '0'
+
 import gettext
+from jarabe import config
+# NOTE: This needs to happen early because some modules register
+# translatable strings in the module scope.
+gettext.bindtextdomain('sugar', config.locale_path)
+gettext.bindtextdomain('sugar-toolkit-gtk3', config.locale_path)
+gettext.textdomain('sugar')
+
+# publish sugar version in the environment
+os.environ['SUGAR_VERSION'] = config.version
+
 from dbus.mainloop.glib import DBusGMainLoop
 DBusGMainLoop(set_as_default=True)
 
@@ -58,7 +72,6 @@ from jarabe.model import filetransfer
 from jarabe.view import launcher
 from jarabe.model import keyboard
 from jarabe.desktop import homewindow
-from jarabe import config
 from jarabe.model.sound import sound
 from jarabe import intro
 from jarabe.intro.window import IntroWindow
@@ -67,6 +80,7 @@ from jarabe import frame
 from jarabe.view.service import UIService
 from jarabe import apisocket
 from jarabe import testrunner
+from jarabe.model import brightness
 
 
 _metacity_process = None
@@ -74,9 +88,9 @@ _window_manager_started = False
 _starting_desktop = False
 
 
-def unfreeze_dcon_cb():
-    logging.debug('STARTUP: unfreeze_dcon_cb')
-    screen.set_dcon_freeze(0)
+def unfreeze_screen_cb():
+    logging.debug('STARTUP: unfreeze_screen_cb')
+    screen.unfreeze()
 
 
 def setup_frame_cb():
@@ -317,13 +331,7 @@ def _migrate_gconf_to_gsettings():
         settings.set_boolean('gsettings-migrated', True)
 
 
-def setup_locale():
-    # NOTE: This needs to happen early because some modules register
-    # translatable strings in the module scope.
-    gettext.bindtextdomain('sugar', config.locale_path)
-    gettext.bindtextdomain('sugar-toolkit-gtk3', config.locale_path)
-    gettext.textdomain('sugar')
-
+def setup_timezone():
     settings = Gio.Settings('org.sugarlabs.date')
     timezone = settings.get_string('timezone')
     if timezone is not None and timezone:
@@ -387,17 +395,18 @@ def main():
 
     _start_window_manager()
 
-    setup_locale()
+    setup_timezone()
     setup_fonts()
     setup_theme()
 
     # this must be added early, so that it executes and unfreezes the screen
     # even when we initially get blocked on the intro screen
-    GLib.idle_add(unfreeze_dcon_cb)
+    GLib.idle_add(unfreeze_screen_cb)
 
     GLib.idle_add(setup_cursortracker_cb)
     sound.restore()
     keyboard.setup()
+    brightness.get_instance()
 
     sys.path.append(config.ext_path)
 

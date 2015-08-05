@@ -422,8 +422,7 @@ class ActivityIcon(CanvasIcon):
         self._journal_entries = []
         self._resume_mode = True
 
-        self.connect_after('button-release-event',
-                           self.__button_release_event_cb)
+        self.connect_after('activate', self.__button_activate_cb)
 
         datastore.updated.connect(self.__datastore_listener_updated_cb)
         datastore.deleted.connect(self.__datastore_listener_deleted_cb)
@@ -502,7 +501,7 @@ class ActivityIcon(CanvasIcon):
         height += ActivityIcon._BORDER_WIDTH * 2
         return (height, height)
 
-    def __button_release_event_cb(self, icon, event):
+    def __button_activate_cb(self, icon):
         self._activate()
 
     def _resume(self, journal_entry):
@@ -609,10 +608,9 @@ class CurrentActivityIcon(CanvasIcon):
         self._home_model.connect('active-activity-changed',
                                  self.__active_activity_changed_cb)
 
-        self.connect_after('button-release-event',
-                           self.__button_release_event_cb)
+        self.connect_after('activate', self.__activate_cb)
 
-    def __button_release_event_cb(self, icon, event):
+    def __activate_cb(self, icon):
         window = self._home_model.get_active_activity().get_window()
         window.activate(Gtk.get_current_event_time())
 
@@ -622,13 +620,23 @@ class CurrentActivityIcon(CanvasIcon):
             self.props.xo_color = self._home_activity.get_icon_color()
 
             if self._home_activity.is_journal():
-                self.get_window().set_cursor(None)
+                if self.get_window():
+                    self.get_window().set_cursor(None)
+                else:
+                    # the window is not visible yet, try again in one second
+                    GLib.timeout_add_seconds(1, self._reset_cursor)
 
         self.props.pixel_size = style.STANDARD_ICON_SIZE
 
         if self.palette is not None:
             self.palette.destroy()
             self.palette = None
+
+    def _reset_cursor(self):
+        if self.get_window():
+            self.get_window().set_cursor(None)
+            return False
+        return True
 
     def create_palette(self):
         if self._home_activity is not None:

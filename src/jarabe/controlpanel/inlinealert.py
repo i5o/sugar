@@ -16,7 +16,6 @@
 
 from gi.repository import Gtk
 from gi.repository import GObject
-from gi.repository import Pango
 
 from sugar3.graphics import style
 from sugar3.graphics.icon import Icon
@@ -50,7 +49,7 @@ class InlineAlert(Gtk.HBox):
                           stroke_color=style.COLOR_WHITE.get_svg())
 
         self._msg_label = Gtk.Label()
-        self._msg_label.set_max_width_chars(50)
+        self._msg_label.set_max_width_chars(150)
         self._msg_label.set_ellipsize(style.ELLIPSIZE_MODE_DEFAULT)
         self._msg_label.set_alignment(0, 0.5)
         self._msg_label.modify_fg(Gtk.StateType.NORMAL,

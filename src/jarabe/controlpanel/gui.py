@@ -207,6 +207,14 @@ class ControlPanel(Gtk.Window):
         self.grab_focus()
 
     def __key_press_event_cb(self, window, event):
+        if event.keyval == Gdk.KEY_Escape:
+            if self._toolbar == self._main_toolbar:
+                self.__stop_clicked_cb(None)
+                self.destroy()
+            else:
+                self.__cancel_clicked_cb(None)
+            return True
+
         # if the user clicked out of the window - fix SL #3188
         if not self.is_active():
             self.present()
@@ -310,7 +318,7 @@ class ControlPanel(Gtk.Window):
                             keywords.append(item)
                         options[item]['keywords'] = keywords
                     else:
-                        _logger.error('no CLASS attribute in %r', item)
+                        _logger.debug('no CLASS attribute in %r', item)
                 except Exception:
                     logging.exception('Exception while loading extension:')
 
@@ -323,6 +331,9 @@ class ControlPanel(Gtk.Window):
         self._show_main_view()
 
     def __accept_clicked_cb(self, widget):
+        if hasattr(self._section_view, "apply"):
+            self._section_view.apply()
+
         if self._section_view.needs_restart:
             self._section_toolbar.accept_button.set_sensitive(False)
             self._section_toolbar.cancel_button.set_sensitive(False)

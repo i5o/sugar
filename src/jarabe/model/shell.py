@@ -132,6 +132,9 @@ class Activity(GObject.GObject):
         """
         self._shell_windows.remove(window)
 
+    def has_shell_window(self):
+        return bool(self._shell_windows)
+
     def stop(self):
         # For web activities the Apisocket will connect to the 'stop'
         # signal, thus preventing the window close.  Then, on the
@@ -429,6 +432,8 @@ class ShellModel(GObject.GObject):
         self._maximum_open_activities = settings.get_int(
             'maximum-number-of-open-activities')
 
+        self._launch_timers = {}
+
     def get_launcher(self, activity_id):
         return self._launchers.get(str(activity_id))
 
@@ -457,12 +462,6 @@ class ShellModel(GObject.GObject):
         old_level = self.zoom_level
         if old_level == new_level:
             return
-
-        if old_level != self.ZOOM_ACTIVITY:
-            screen = Gdk.Screen.get_default()
-            active_window_type = screen.get_active_window().get_type_hint()
-            if active_window_type != Gdk.WindowTypeHint.DESKTOP:
-                return
 
         self._zoom_level = new_level
         if new_level is not self.ZOOM_ACTIVITY:
@@ -732,10 +731,13 @@ class ShellModel(GObject.GObject):
 
         self.emit('launch-started', home_activity)
 
-        # FIXME: better learn about finishing processes by receiving a signal.
-        # Now just check whether an activity has a window after ~90sec
-        GObject.timeout_add_seconds(90, self._check_activity_launched,
-                                    activity_id)
+        if activity_id in self._launch_timers:
+            GObject.source_remove(self._launch_timers[activity_id])
+            del self._launch_timers[activity_id]
+
+        timer = GObject.timeout_add_seconds(90, self._check_activity_launched,
+                                            activity_id)
+        self._launch_timers[activity_id] = timer
 
     def notify_launch_failed(self, activity_id):
         home_activity = self.get_activity_by_id(activity_id)
@@ -752,6 +754,7 @@ class ShellModel(GObject.GObject):
                           activity_id)
 
     def _check_activity_launched(self, activity_id):
+        del self._launch_timers[activity_id]
         home_activity = self.get_activity_by_id(activity_id)
 
         if not home_activity:
