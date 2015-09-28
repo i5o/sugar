@@ -25,6 +25,9 @@ from gi.repository import GdkPixbuf
 from sugar3.graphics import style
 from sugar3.graphics.radiotoolbutton import RadioToolButton
 from jarabe.controlpanel.sectionview import SectionView
+from sugar3.graphics.objectchooser import ObjectChooser
+from sugar3.graphics.objectchooser import FILTER_TYPE_GENERIC_MIME
+from sugar3 import mime
 
 from gettext import gettext as _
 
@@ -56,7 +59,14 @@ class Background(SectionView):
         clear_button.set_label(_('Clear background'))
         clear_button.connect('clicked', self._clear_clicked_cb)
         clear_button.show()
+
+        choosefromjournal_btn = Gtk.Button()
+        choosefromjournal_btn.set_label(_('Choose from journal'))
+        choosefromjournal_btn.connect('clicked',
+                                      self._choosefromjournal_clicked_cb)
+
         self.pack_end(clear_button, False, True, 0)
+        self.pack_end(choosefromjournal_btn, False, True, 0)
 
         scrolled_window = Gtk.ScrolledWindow()
         scrolled_window.set_shadow_type(Gtk.ShadowType.ETCHED_IN)
@@ -100,6 +110,11 @@ class Background(SectionView):
         self.pack_start(alpha_alignment, False, False, 0)
         alpha_alignment.show()
 
+        self._generate_store()
+        self.setup()
+
+    def _generate_store(self):
+        self._store.clear()
         self._paths_list = []
 
         file_paths = []
@@ -109,8 +124,13 @@ class Background(SectionView):
                     for file_ in files:
                         file_paths.append(os.path.join(root, file_))
 
+        possible_exts = ["png", "svg", "jpg", "jpeg", "gif"]
+        for ext in possible_exts:
+            img_with_ext = self._model.USER_BACKGROUND_PATH.format(ext=ext)
+            if os.path.exists(os.path.join(img_with_ext)):
+                file_paths.append(img_with_ext)
+
         self._append_to_store(file_paths)
-        self.setup()
 
     def _append_to_store(self, file_paths):
         if file_paths:
@@ -182,3 +202,16 @@ class Background(SectionView):
 
     def undo(self):
         self._model.undo()
+
+    def _choosefromjournal_clicked_cb(self, widget):
+        chooser = ObjectChooser(what_filter='Image',
+                                filter_type=FILTER_TYPE_GENERIC_MIME)  # ,
+#                                show_preview=True)
+
+        try:
+            result = chooser.run()
+            if result == Gtk.ResponseType.ACCEPT:
+                jobject = chooser.get_selected_object()
+        finally:
+            chooser.destroy()
+            del chooser

@@ -29,6 +29,9 @@ import os
 BACKGROUNDS_DIRS = (os.path.join('/usr', 'share', 'backgrounds'),
                     get_documents_path())
 
+USER_BACKGROUND_PATH = os.path.join(os.path.expanduser('~/.sugar'),
+                                    'background.{ext}')
+
 
 def set_background_image_path(file_path):
     settings = Gio.Settings(BACKGROUND_DIR)
